@@ -1,0 +1,550 @@
+---
+title: 'Final project: Is College Worth It?'
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+date: 'Due date: December 9, 2019'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data description
+
+This dataset is an extract of two surveys conducted by the National Science Foundation (NSF) in 2013: the National Survey of College Graduates (SESTAT 2013) and Survey of Doctorate Recipients (SESTAT 2013). Information on the survey and sampling methods can be found here. 
+
+\url{https://highered.ipums.org/highered/survey_designs.shtml}
+
+The dataset is public and can be cited in your report as: Minnesota Population Center. IPUMS Higher Ed: Version 1.0 [dataset]. Minneapolis, MN: University of Minnesota, 2016.
+https://doi.org/10.18128/D100.V1.0
+
+On Canvas, you would find the following files:
+
+* **data.formatted.csv**: the dataset downloaded from IPUMS Higher Ed, with missing or logical skips recoded to NA, the error in the variable CHTOT fixed. 
+
+* **dataset.RData**: an R workspace that contains data.formatted.csv pre-loaded as a dataframe called \texttt{dataset}, with each variable given the correct type. 
+
+It is recommended that you start with this file. 
+
+For regression you may find it convenient to recode some yes/no variables as a binary 1/0 numeric variable. 
+
+* **codebook-basic.txt**: a list of variables and the meaning of their values. Note that missing or logical skips have been recoded to NA. 
+
+* **codebook.xml**: an XML version of the codebook, with more detailed explanations on the variables and hyperlinks. You can open this in your browser. 
+
+* **final-project.rmd / final-project.pdf**: instructions and questions
+
+The goals of this analysis are following.
+
+* Give a general description of the work landscape for those with a college degree in the US, as surveyed in 2013
+
+* Build a regression model to predict annual salary
+
+* Build a regression model to predict job satisfaction
+
+* Use our analysis to fact-check news outlets. 
+
+* Convey our findings in a technical report and in plain terms. 
+
+## General instructions on formatting
+You should hand in two files in total: an rmd file and a pdf file.
+
+However, it should look less like homework and more like a professional report. 
+
+A good standard are the PEW research reports, such as this:
+
+https://www.pewsocialtrends.org/2014/02/11/the-rising-cost-of-not-going-to-college/
+
+Here is what the lay summary from that article looks like
+
+https://www.pewresearch.org/fact-tank/2014/02/11/6-key-findings-about-going-to-college/
+
+Please answer all questions asked and write in full sentences with good formatting (eg: clear paragraphs). 
+
+For hypothesis testing, use 95% significance level unless otherwise specified. 
+
+\newpage
+# The Report
+
+Your report should contain the same headings as the sections below. Under each heading, put answers to these questions.
+
+For each question/bullet, summarize in ONE paragraph, with appropriate plots and/or numbers/tables.
+
+## Basic analysis. 
+
+### Population and sampling
+
+1. This dataset consists of two different surveys. Briefly describe the population, the sample, and the sampling method for each of the surveys. Name TWO possible biases that each sample can have. Do we introduce further biases when we analyze the results of these surveys together (ie: treat it as one big dataset)?
+
+  In the National Survey of College Graduates(NSCG), the population consists of individuals residing in the United States, under the age of 76, who hold a bachelor's degree or higher. Its sample is a two-stage sampling scheme : ACS households called simple random sample in 2010, and its sampling method is stratified systematic (sampling method). The samples have biases that scientists and engineers did not receive higher education in the United States. Also, there is no information about individuals without a science or engineering post-secondary degree, who are not currently working in a science or engineering occupation.
+  
+  In the Survey of Doctorate Recipients (SDR), the popularation consists of individuals residing who earned a doctorate degree in science, engineering, or health in the United States. Its sample is a stratified sample from the eligible individuals in the Doctorate Records File, and its sampling method is stratified (sampling method). The samples have biases that the sample sizes of SDR has decreased since the more respondents of SDR currently live abroad, and their data is to manage a separate file:ISDR. Also, there is a non-response bias since the surveys used web surveys for data collection later.
+    
+  We introduce an additional bias when we combine the surveys of NSCG and SDR. We do not know the ratio of populations between those who hold at least bachelor's degree and doctorate degree between the two surveys. Besides, as the sample size of SDR survey decreases, the ratio of populations about those who hold at least bachelor's degree in NSCG survey and doctorate degree in SDR do not balance. As the sample size of SDR survey decreases, the ratio of populations between those who only hold bachelor's degree to those who hold either Master's degree, Doctorate degree, or Professional degree may not be well representative. 
+
+### Demographics
+
+2. Summarize the demographics of the survey. 
+Specifically, you should describe the distribution of gender, minority, race/ethnicity, and total number of children. <br />
+
+```{r}
+# show the demographic of the survey as mosaic plot
+load("dataset.RData")
+data.df <- dataset
+library(vcd)
+library(ggplot2)
+library(ggmosaic)
+ggplot(data = data.df) + geom_mosaic(aes(x = product(RACETH,GENDER), fill=RACETH), na.rm = TRUE)+labs(x="Gender",y="Race/Ethnicity", title = 'The distribution of gender and race of NSCG')+scale_x_productlist(labels = c("Female","Male"))+scale_y_productlist(labels=c("Asian","White","Under-represented minorities"))+scale_fill_discrete(name = "Race", labels = c("Asian", "White", "Under-represented minorities"))
+# show the table of demographic of the survey as matrix
+demo.matrix <- 100*prop.table(table(data.df$GENDER, data.df$RACETH))
+colnames(demo.matrix) <- c("Asian", "White", "Under-represented minorities")
+rownames(demo.matrix) <- c("female", "male")
+demo.matrix
+# Sequentially, the sum of female population % and the sum of male population %.(43.35%, 56.64%)
+sum(demo.matrix[1,1],demo.matrix[1,2],demo.matrix[1,3])
+sum(demo.matrix[2,1],demo.matrix[2,2],demo.matrix[2,3])
+```
+  In the survey, the population of male is around 43.35% , and that of female is around 56.65%. As we observe, the population of male is around 13.3% more than that of female regardless of race. White occupies around 62.52%, Asian occupied 17.09%, and Under-represented minorities occupies 20.39% in the proportion table of race and ethnicity. We see that White is the highest population in both male and female. Also, the lowest population in male is Under-represented minorities(9.596%), and the Asian female is the lowest population in female(7.0767%). Considering overall race/ethnicity, the majority of race/ethnicity is White regardless of gender whereas the minority of race/ethnicity is Asian.
+<br/>
+### Education
+
+3. Summarize the distribution of highest degrees and bachelor degrees by field and year obtained obtain. <br />
+
+```{r}
+# set the mosaic plot for the field of major for first bachelor degree and Year of first bachelor degree
+  ggplot(data = data.df) + geom_mosaic(aes(x = product(NBAMEMG,BA03Y5), fill=NBAMEMG), na.rm = TRUE)+labs(x="Range of years",y="Major", title = 'The field of major for first bachelor degree and Year of first bachelor degree')+scale_x_productlist(labels=c("1956 to 1960","1961 to 1965","1966 to 1970","1971 to 1975","1976 to 1980","1981 to 1985","1986 to 1990","1991 to 1995","1996 to 2000","2001 to 2005","2006 or later","Blank","Missing"))+scale_fill_discrete(name = "Field of majors", labels = c("Computer and mathematical sciences", "Life and related sciences","Physical and related sciences", "Social and related sciences","Engineering","Science and engineering-related fields","Non-science and engineering fields","Other categories","Blank"))+coord_flip()+theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+
+```
+
+```{r}
+# set the mosaic plot for the field of major for highest degree and Year of highest degree
+  ggplot(data = data.df) + geom_mosaic(aes(x = product(NDGMEMG,HD03Y5), fill=NDGMEMG), na.rm = TRUE)+labs(x="Range of years",y="Major", title = 'The field of major for highest degree and Year of highest degree')+scale_x_productlist(labels=c("1961 to 1965","1966 to 1970","1971 to 1975","1976 to 1980","1981 to 1985","1986 to 1990","1991 to 1995","1996 to 2000","2001 to 2005","2006 to 2010","2011 or later"))+scale_fill_discrete(name = "Field of majors", labels = c("Computer and mathematical sciences", "Biological, agricultural and environmental life sciences","Physical and related sciences", "Social and related sciences","Engineering","Science and engineering-related fields","Non-science and engineering fields"))+coord_flip()+theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+```
+<br />  
+  In the field of major for first bachelor degree and Year of first bachelor degree, none of the sample of all majors obtained a major more than 2006 or later. We also observe that more population of all majors gradually obtain a major every range of years. Between 1956 and 1960, the people of sample obtained Physical and related sciences degree more than others. Between 1961 and 1980, the most people obtained Social and related science degrees more than others. Between 1981 and 1990, the most people obtained Engineering degrees more than others. Between 1991 and now, the most people obtained Social and related science degrees more than others.
+<br />  
+  In the field of major for highest degree and Year of highest degree, none of the people of sample in all majors obtained major degrees more than 2006 to 2010. The more people obtained the highest degree in all majors every range of years, but the size of sample is sharply decreased in 2011 or later. The most people of the sample obtained Engineering degrees between 1961 and 1965. Between 1966 and 2010, most of people obtained Social and related sciences or Engineering. <br />
+  
+4. For those who obtained more than a bachelor degree, is there a significant association between field of major between their bachelor degree and their highest degree? State any tests you use, your p-value, and draw conclusions. <br />
+
+ We set hypothesis tests that $H_0$ : There is not a significant difference in retention rates among different field of majors, and $H_A$ : There is a significant difference in retention rates among different field of majors. To check the hypotheses, we would carry out chi-square test.
+```{r}
+# Before doing Chi-Square, we need to make another variable that the people of the sample obtain same major in bachelor degree and at least master degree or not.
+# initialize a new variable as 0
+data.df$R.Rate <- 0
+# 1 means the people in the sample have same degree from bachelors while 0 does not.
+data.df$R.Rate[(data.df$DGRDG[] != 1) & (as.numeric((data.df$NBAMEMG[]) == as.numeric(data.df$NDGMEMG[])))] <- 1
+# Next, we should consider excluding numerical value about 96("Blank") for bachelor's degree.
+# test it what p-value outputs as chi-square.
+chisq.test(data.df$R.Rate[data.df$NBAMEMG[] != 96], data.df$NBAMEMG[data.df$NBAMEMG!= 96])
+
+```
+ Through the Chi-Square test, the p-value is less than 2.2e-16 which is closed to 0. Since the p-value is less than significant level(0.05), we could contradict $H_0$. Therefore, there is a significant difference in retention rates among different field of majors. <br />
+### Job status
+
+5. What does the labor force look like?
+* Describe general statistics: % of people working, % working part-time, number of hours per week and number of weeks per year. 
+* Do most people work in short bursts (few weeks but high number of hours per week), or do most people work with regular hours year-round? 
+* What are the major reasons that led people to not work at the time of survey?
+
+```{r}
+# find the % of people working
+sum(data.df$LFSTAT=="1")*100/length(data.df$LFSTAT)
+# find the % of people part-time working
+round((length(which(data.df$PTWTFT=="0"))+length(which(data.df$PTWTFT=="1")))*100/length(which(data.df$LFSTAT==1)),2)
+# find the % number of hours per week and weeks per year
+# set the proportion table
+work.time.matrix <- 100*prop.table(table(data.df$HRSWKGR,data.df$WKSWKGR))
+rownames(work.time.matrix) <- c("20 or less", "21 - 35", "36 - 40", "over 40")
+colnames(work.time.matrix) <- c("1-10 weeks", "11 - 20 weeks", "21 - 39 weeks", "40-52 weeks")
+work.time.matrix
+
+# find the major reasons that led people to not work
+# find the number of people: Reasons for not working about family responsibilities
+table(data.df$NWFAM)[[2]]
+# find the number of people: Reasons for not working about layoff
+table(data.df$NWLAY)[[2]]
+#find the number of people: Reasons for not working that they do not need or want to work
+table(data.df$NWNOND)[[2]]
+# find the number of people: Reasons for not working that there is no suitable job available
+table(data.df$NWOCNA)[[2]]
+# find the number of people: Reasons for not working: illness, retired or other (combined)
+table(data.df$NWOTP)[[2]]
+# find the number of people: Reasons for not working: student
+table(data.df$NWSTU)[[2]]
+```
+  In the general statistics, 85.14% of people are working, and 13.24% of working people have part-time job. Around 7.5% of people work 20 or less hours, around 8.27% of people work 21 ~ 35 hours, around 37.75% of people work 36 ~ 40 hours, around 46.48% of people work over 40 hours per week. We see that the majority of people work over 40 hours per week. Around 0.65% of people work 1 ~ 10 weeks, around 0.77% of people work 11 ~ 20 weeks, around 6.32% of people work 21 ~ 39 weeks, and around 92.27% of people work 40 ~ 52 weeks per year. We see that the majority of people work 40 ~ 52 weeks per year. <br />
+  Through the matrix of the number of hours per week and weeks per year, we know that most people work with regular hours year-round. This is because around 79.6% of people work full time job and 40 ~ 52 weeks per year. Also, there is tiny rate around 0.136% of people work over 40 hours per week, and 1 ~ 10 weeks per year. It means really few people work in short bursts. Therefore, the majority of people work with regular hours year-round. <br />
+  At the time of survey, 2766 people do not work due to family responsibilities, 1642 people do not work due to layoff. 3762 people do not work since they do not need or want to do. 2584 people do not work since they look for a suitable job. 10710 of people do not work since they are ill, retire, or have other(combined). 1948 people do not work since they are students. The majority of people do not work due to illness, retirement, or other(combined). As a result, illness, retirement, or other(combined) are the major reasons that led people to not work at the time of survey. <br />
+
+6. Degree relevance
+* How relevant are the people's degree to their principle job? (Do people work in the field that they were trained for, or do they work in unrelated areas?). 
+* Is there a statistically significant difference in relevance of degree vs 
+  - job type
+  - the degree that they are trained for, and
+  - the type of job that people do?  
+
+Note: state the tests you use, p-value and draw conclusions. 
+You may find the variables MGRNAT, MGROTH, MGRSOC, NOCPRMG, OCEDRLP, NDGMEMG, WAPRSM and WASCSM relevant. 
+
+We set the first hypothesis test that $H_0$ : Degree relevance is independent for job type, and $H_A$ : Degree relevance is dependent for job type. We set the second hypothesis test that $H_0$ : Degree relevance is independent for degree that they trained for, and $H_A$ : Degree relevance is dependent for degree that they trained for. We set the third hypothesis test that $H_0$ : Degree relevance is independent for principal activity in people's job, and $H_A$ : Degree relevance is dependent for principal activity in people's job. To conduct those three 3 hypothesis test, we use Chi-Square test method.
+
+```{r}
+# set the chi-square test for degree relevance(OCEDRLP : Principal job related to highest degree) vs job type(NOCPRMG :		Job code for principal job (major group))
+chisq.test(data.df$OCEDRLP, data.df$NOCPRMG)
+# set the chi-square test for degree relevance(OCEDRLP : Principal job related to highest degree) vs degree that they trained for(NDGMEMG : Field of major for highest degree (major group))
+chisq.test(data.df$OCEDRLP, data.df$NDGMEMG)
+# set the chi-square test for degree relevance(OCEDRLP : Principal job related to highest degree) vs principal activity in people's job(WAPRSM	: Summarized primary work activity)
+chisq.test(data.df$OCEDRLP, data.df$WAPRSM)
+```
+  In the first hypothesis test: OCEDRLP vs NOCPRMG, the p-value is 2.2e-16 which is closed to 0, so we could contradict $H_0$. We conclude that degree relevance is dependent for job type. In the second hypothesis test: OCEDRLP vs NDGMEMG, the p-value is 2.2e-16 which is closed to 0, so we could contradict $H_0$. We conclude that degree relevance is dependent for degree that they trained for. In the third hypothesis test: OCEDRLP vs WAPRSM, the p-value is 2.2e-16 which is closed to 0, so we could contradict $H_0$. We conclude that degree relevance is dependent for principal activity in people's job.
+  
+7. Job satisfaction
+* Summarize overall job satisfaction
+* Among those who reported "somewhat/very satisfied", which aspects of their jobs are they most satisfied with? Among those who reported "somewhat/very dissatisfied", which aspects of their jobs are they least satisfied with? 
+* Base on the above, which factors are most important to job satisfaction? 
+
+```{r}
+#set the overall job satisfaction
+ovl.sat.table <- table(data.df$JOBSATIS)
+rownames(ovl.sat.table) <- c("Very satisfied", "Somewhat satisfied", "Somewhat dissatisfied", "Very dissatisfied")
+ovl.sat.table
+
+# Since we need to integrate Very satisfied/somewhat satisfied and Very dissatisfied/somewhat dissatisfied, we create a new category to simplify satisfied or dissatisfied.
+data.df$Ovl.JOBSATIS <- 0
+data.df$Ovl.JOBSATIS[data.df$JOBSATIS == "3" | data.df$JOBSATIS == "4"] <- 1
+
+# set a proportional table for the overall job satisfaction vs Satisfaction principal job's opportunities for advancement
+ovl.jopp.table <- 100*prop.table(table(data.df$Ovl.JOBSATIS,data.df$SATADV))
+colnames(ovl.jopp.table) <- c("Very satistifed", "Somewhat satisfied", "Somewhat dissatisfied", "Very dissatisfied")
+rownames(ovl.jopp.table) <- c("satistifed", "dissatisfied")
+ovl.jopp.table
+# compute the percentage of somewhat/very satisfied people are the most satisfied with
+ovl.jopp.table[1,1]*100/sum(ovl.jopp.table[1, ])
+# compute the percentage of somewhat/very dissatisfied people are the most dissatisfied with.
+ovl.jopp.table[2,4]*100/sum(ovl.jopp.table[2, ])
+
+# set a proportional table for the overall job satisfaction vs Satisfaction principal job benefits
+ovl.jben.table <- 100*prop.table(table(data.df$Ovl.JOBSATIS,data.df$SATBEN))
+colnames(ovl.jben.table) <- c("Very satistifed", "Somewhat satisfied", "Somewhat dissatisfied", "Very dissatisfied")
+rownames(ovl.jben.table) <- c("satistifed", "dissatisfied")
+ovl.jben.table
+# compute the percentage of somewhat/very satisfied people are the most satisfied with
+ovl.jben.table[1,1]*100/sum(ovl.jben.table[1, ])
+# compute the percentage of somewhat/very dissatisfied people are the most dissatisfied with.
+ovl.jben.table[2,4]*100/sum(ovl.jben.table[2, ])
+
+# set a proportional table for the overall job satisfaction vs Satisfaction principal job's intellectual challenge
+ovl.int.table <- 100*prop.table(table(data.df$Ovl.JOBSATIS,data.df$SATCHAL))
+colnames(ovl.int.table) <- c("Very satistifed", "Somewhat satisfied", "Somewhat dissatisfied", "Very dissatisfied")
+rownames(ovl.int.table) <- c("satistifed", "dissatisfied")
+ovl.int.table
+# compute the percentage of somewhat/very satisfied people are the most satisfied with
+ovl.int.table[1,1]*100/sum(ovl.int.table[1, ])
+# compute the percentage of somewhat/very dissatisfied people are the most dissatisfied with.
+ovl.int.table[2,4]*100/sum(ovl.int.table[2, ])
+
+# set a proportional table for the overall job satisfaction vs Satisfaction principal job's degree of independence
+ovl.ind.table <- 100*prop.table(table(data.df$Ovl.JOBSATIS,data.df$SATIND))
+colnames(ovl.ind.table) <- c("Very satistifed", "Somewhat satisfied", "Somewhat dissatisfied", "Very dissatisfied")
+rownames(ovl.ind.table) <- c("satistifed", "dissatisfied")
+ovl.ind.table
+# compute the percentage of somewhat/very satisfied people are the most satisfied with
+ovl.ind.table[1,1]*100/sum(ovl.ind.table[1, ])
+# compute the percentage of somewhat/very dissatisfied people are the most dissatisfied with.
+ovl.ind.table[2,4]*100/sum(ovl.ind.table[2, ])
+
+# set a proportional table for the overall job satisfaction vs Satisfaction principal job's job location
+ovl.loc.table <- 100*prop.table(table(data.df$Ovl.JOBSATIS,data.df$SATLOC))
+colnames(ovl.loc.table) <- c("Very satistifed", "Somewhat satisfied", "Somewhat dissatisfied", "Very dissatisfied")
+rownames(ovl.loc.table) <- c("satistifed", "dissatisfied")
+ovl.loc.table
+# compute the percentage of somewhat/very satisfied people are the most satisfied with
+ovl.loc.table[1,1]*100/sum(ovl.loc.table[1, ])
+# compute the percentage of somewhat/very dissatisfied people are the most dissatisfied with.
+ovl.loc.table[2,4]*100/sum(ovl.loc.table[2, ])
+
+# set a proportional table for the overall job satisfaction vs Satisfaction principal job's level of responsibility
+ovl.res.table <- 100*prop.table(table(data.df$Ovl.JOBSATIS,data.df$SATRESP))
+colnames(ovl.res.table) <- c("Very satistifed", "Somewhat satisfied", "Somewhat dissatisfied", "Very dissatisfied")
+rownames(ovl.res.table) <- c("satistifed", "dissatisfied")
+ovl.res.table
+# compute the percentage of somewhat/very satisfied people are the most satisfied with
+ovl.res.table[1,1]*100/sum(ovl.res.table[1, ])
+# compute the percentage of somewhat/very dissatisfied people are the most dissatisfied with.
+ovl.res.table[2,4]*100/sum(ovl.res.table[2, ])
+
+# set a proportional table for the overall job satisfaction vs Satisfaction principal job salary
+ovl.sal.table <- 100*prop.table(table(data.df$Ovl.JOBSATIS,data.df$SATSAL))
+colnames(ovl.sal.table) <- c("Very satistifed", "Somewhat satisfied", "Somewhat dissatisfied", "Very dissatisfied")
+rownames(ovl.sal.table) <- c("satistifed", "dissatisfied")
+ovl.sal.table
+# compute the percentage of somewhat/very satisfied people are the most satisfied with
+ovl.sal.table[1,1]*100/sum(ovl.sal.table[1, ])
+# compute the percentage of somewhat/very dissatisfied people are the most dissatisfied with.
+ovl.sal.table[2,4]*100/sum(ovl.sal.table[2, ])
+
+
+# set a proportional table for the overall job satisfaction vs Satisfaction principal job's job security
+ovl.sec.table <- 100*prop.table(table(data.df$Ovl.JOBSATIS,data.df$SATSEC))
+colnames(ovl.sec.table) <- c("Very satistifed", "Somewhat satisfied", "Somewhat dissatisfied", "Very dissatisfied")
+rownames(ovl.sec.table) <- c("satistifed", "dissatisfied")
+ovl.sec.table
+# compute the percentage of somewhat/very satisfied people are the most satisfied with
+ovl.sec.table[1,1]*100/sum(ovl.sec.table[1, ])
+# compute the percentage of somewhat/very dissatisfied people are the most dissatisfied with.
+ovl.sec.table[2,4]*100/sum(ovl.sec.table[2, ])
+
+# set a proportional table for the overall job satisfaction vs Satisfaction principal job's contribution to society
+ovl.cont.table <- 100*prop.table(table(data.df$Ovl.JOBSATIS,data.df$SATSOC))
+colnames(ovl.cont.table) <- c("Very satistifed", "Somewhat satisfied", "Somewhat dissatisfied", "Very dissatisfied")
+rownames(ovl.cont.table) <- c("satistifed", "dissatisfied")
+ovl.cont.table
+# compute the percentage of somewhat/very satisfied people are the most satisfied with
+ovl.cont.table[1,1]*100/sum(ovl.cont.table[1, ])
+# compute the percentage of somewhat/very dissatisfied people are the most dissatisfied with.
+ovl.cont.table[2,4]*100/sum(ovl.cont.table[2, ])
+```
+  In the overall job satisfaction(JOBSATIS), 43147 people are very satisfied with their jobs, 44508 people are somewhat satisfied, 8178 are somewhat dissatisfied, and 2218 people are very dissatisfied. We observe that the majority of people are somewhat satisfied with their jobs. <br />
+  
+  Sequentially, we arranged 9 proportional tables about Overall Satisfaction vs Satisfaction principal job's opportunities for advancement, Overall Satisfaction vs Satisfaction principal job benefits, Overall Satisfaction vs Satisfaction principal job's intellectual challenge, Overall Satisfaction vs Satisfaction principal job's degree of independence, Overall Satisfaction vs Satisfaction principal job's job location, Overall Satisfaction vs Satisfaction principal job's level of responsibility, Overall Satisfaction vs Satisfaction principal job salary, Overall Satisfaction vs Satisfaction principal job's job security, and Overall Satisfaction vs Satisfaction principal job's contribution to society. Those who are somewhat/very satisfied with jobs, are the most satisfied with the aspect of principal job's degree of independence since the aspect is the highest rate(around 64.58%) among others. Those who are somewhat/very dissatisfied with jobs, are the least somewhat dissatisfied with the aspect of principal job's opportunities for advancement since the aspect is the highest dissatisfied rate (around 46.35%) among others. <br />
+  
+  Based on above, the most important job satisfaction is degree of independence. This is because around 64.58% of the highest somewhat/very satisfied proportion is reported in the degree of independence while around 46.35% of the highest somewhat/very dissatisfied proportion is reported in the principal job's opportunities for advancement. It means depending on the aspect for degree of independence, it has the greatest influence on the job satisfaction. <br />
+  
+## Regression 1: SALARY vs other variables
+
+Build a linear regression model to predict SALARY based on the other relevant variables. 
+
+1. Detail how you did variable selection: which models did you run, why did you discard certain models or variables, any variable transformations or recoding you did and why, which diagnostic tests did you run and what they showed, justifications if you removed outliers. How did you decide to deal with missing values in this dataset? 
+
+  I considered some variables which might correlate with the salary. I added a variable one by one in the model, and compared adjusted $R^2$ values. When I gathered enough variables, I tested summary of my rough model. Finally, I created an appropriate model with 15 variables:NDGMEMG(field of major for highest degree),DGRDP(type of highest degree),HRSWKGR(working hours per week), WKSWKGR(working weeks per year),BA03Y5(year of first bachelor degree),BADGRUS(location of school for awarding first bachelor degree),HD03Y5(year of highest degree),JOBINS(job health insurance),JOBVAC(available benefits: paid vacation, sick, or personal days),OCEDRLP(principal job related to highest degree),NOCPRMG(job code for principal job),EMSEC(employer sector),WAPRSM(summarized primary work activity),JOBSATIS(job satisfaction),SATADV(satisfaction of job's opportunities for advancement). Since the others of variables do not raise adjusted $R^2$ value, I substracted them. I also transformed some variables about HD03Y5 as factor since the variable is numerical. I created a new employed data frame: emp.data.df because I should consider excluding unemployed people and no labor force in my final model. In other words, the salary of all unemployed people and no labor force are 0.
+  In the diagnostic tests, I test a method : stepAIC. When I run my model as stepAIC, it filtered unnecessary information about variables. In my model, when I run my model with stepAIC, any factor is not excluded. When I summarize my final model, there is 9999("missing") factor which is unnecessary to analyze in the summary. I also create a new variable about newBA03Y5 to exclude it as factor function instead of BA03Y5. 
+```{r}
+#Before running my final regression model, I need to trim my selected variables.
+# change HD03Y5 to factor from numerical as mentioned
+data.df$HD03Y5.factor<- as.factor(data.df$HD03Y5)
+# set a new variable instead of BA03Y5 to exclude missing values
+data.df$newBA03Y5 <- factor(data.df$BA03Y5, exclude = 9999)
+# set a new employed data frame
+emp.data.df <- subset(data.df, LFSTAT == 1)
+
+```
+
+2. Call your final regression model \texttt{model.lm}. Clearly show your final regression model: the R command, and the R output summary. Write down the equation that R gives you. Interpret all the coefficients and the $p$-values associated with the coefficients. 
+
+```{r}
+# call the MASS to run stepAIC to remove outliers
+library(MASS)
+# set my final regression model with 15 variables
+model.1 <- lm(SALARY ~ NDGMEMG+DGRDG+HRSWKGR+WKSWKGR+newBA03Y5+BADGRUS+HD03Y5.factor+JOBINS+JOBVAC+OCEDRLP+NOCPRMG+EMSEC+WAPRSM+JOBSATIS+SATADV,data = emp.data.df)
+# show the summary of the model to check R^2 values and other factors' coefficient and p-value.
+
+summary(stepAIC(model.1))
+```
+
+  In the equation, $Y = 10479.64-7774.39\beta_1-3180.00\beta_2-7327.39\beta_3+2693.26\beta_4-5496.25\beta_5-3940.30\beta_6+12776.16\beta_7+32234.99\beta_8+33158.06\beta_9+15859.64\beta_10+27798.09\beta_11+37616.80\beta_12+5154.30\beta_13+15559.13\beta_14+20033.11\beta_15-3403.14\beta_16+1708.99\beta_17+2961.26\beta_18+5070.99\beta_19+5879.63\beta_20+5768.02\beta_21+4699.60\beta_22+1972.59\beta_23-2123.71\beta_24-4417.91\beta_25+1167.62\beta_26-212.63\beta_27-91.76\beta_28-979.77\beta_29-1088.60\beta_30-2759.91\beta_31-5609.55\beta_32-8077.81\beta_33-13195.24\beta_34-22488.01\beta_35-30169.67\beta_36+15430.85\beta_37+6310.56\beta_38-2972.58\beta_39-12693.79\beta_40-13316.92\beta_41-10504.25\beta_42-6288.68\beta_43-2653.75\beta_44-2047.54\beta_45-5906.09\beta_46+141.53\beta_47+13642.81\beta_48+19090.29\beta_49-10398.56\beta_50+3457.58\beta_51+3098.02\beta_52-4671.76\beta_53-5186.28\beta_54-7440.18\beta_55-8806.35\beta_56-2302.45\beta_57-4166.34\beta_58-7314.22\beta_59$.<br />
+  Intercept($\beta_0$) coefficient is 10479.64 with p-value 5.96e-06 which means the standard of NDGMEMG1(Computer and mathematical sciences), DGRDG1: Bachelor's, HRSWKGR1(working 20 hours or less per week), WKSWKGR(working 1-10 weeks per year), newBA03YY1956(year of first bachelor degree between 1956 and 1960), BADGRUS0(awarding first bachelor degree in location of non-US school), HD03Y5.factor1961(year of highest degree between 1961 and 1965), JOBINS0(no health insurance),JOBVAC0(no paid vacation/sick/personal days), OCEDRLP1(closely related job with highest degree), NOCPRMG1(Job code for principal job for Computer and mathematical scientists), EMSEC1(employer sector for years college or other school system), WAPRSM1(Research and Development in Summarized primary work activity), JOBSATIS1(very satisfied job satisfaction), and SATADV1(very satisfied in satisfaction principal job's opportunities for advancement). <br />
+  The slope of NDGMEMG2($\beta_1$) coefficient is -7774.39 with p-value: less than 2e-16 closed to 0. The slope of NDGMEMG3($\beta_2$) coefficient is -3180.00 with p-value: 9.94e-09 closed to 0. The slope of NDGMEMG4($\beta_3$) coefficient is -7327.39 with p-value: less than 2e-16 closed to 0. The slope of NDGMEMG5($\beta_4$) coefficient is 2693.26 with p-value: 5.54e-10 closed to 0.  The slope of NDGMEMG6($\beta_5$) coefficient is -5496.25 with p-value: less than 2e-16 closed to 0.  The slope of NDGMEMG7($\beta_6$) coefficient is -3940.30 with p-value: less than 2e-16 closed to 0.  The slope of DGRDG2($\beta_7$) coefficient is 12776.16 with p-value: less than 2e-16 closed to 0. The slope of DGRDG3($\beta_8$) coefficient is 32234.99 with p-value: less than 2e-16 closed to 0. The slope of DGRDG4($\beta_9$) coefficient is 33158.06 with p-value: less than 2e-16 closed to 0. The slope of HRSWKGR2($\beta_10$) coefficient is 15859.64 with p-value: less than 2e-16 closed to 0. The slope of HRSWKGR3($\beta_11$) coefficient is 27798.09 with p-value: less than 2e-16 closed to 0. The slope of HRSWKGR4($\beta_12$) coefficient is 37616.80 with p-value: less than 2e-16 closed to 0. The slope of WKSWKGR2($\beta_13$) coefficient is 5154.30 with p-value: 0.000948. The slope of WKSWKGR3($\beta_14$) coefficient is 15559.13 with p-value: less than 2e-16. The slope of WKSWKGR4($\beta_15$) coefficient is 20033.11 with p-value: less than 2e-16. The slope of newBA03Y51961($\beta_16$) coefficient is -3403.14 with p-value: 0.078040. The slope of newBA03Y51966($\beta_17$) coefficient is 1708.99 with p-value: 0.387205. The slope of newBA03Y51971($\beta_18$) coefficient is 2961.26 with p-value: 0.138758. The slope of newBA03Y51976($\beta_19$) coefficient is 5070.99 with p-value: 0.012208. The slope of newBA03Y51981($\beta_20$) coefficient is 5879.63 with p-value: 0.003963. The slope of newBA03Y51986($\beta_21$) coefficient is 5768.02 with p-value: 0.005034. The slope of newBA03Y51991($\beta_22$) coefficient is 4699.60 with p-value: 0.023200. The slope of newBA03Y51996($\beta_23$) coefficient is 1972.59 with p-value: 0.344629.  The slope of newBA03Y2001($\beta_24$) coefficient is -2123.71 with p-value: 0.313594. The slope of newBA03Y52006($\beta_25$) coefficient is -4417.91 with p-value: 0.039820. The slope of BADGRUS1($\beta_26$) coefficient is 1167.62 with p-value: 2.48e-05. The slope of HD03Y5.factor1966($\beta_27$) coefficient is -212.63 with p-value 0.899370. The slope of HD03Y5.factor1971($\beta_28$) coefficient is -91.76 with p-value: 0.957045. The slope of HD03Y5.factor1976($\beta_29$) coefficient is -979.77 with p-value: 0.572030. The slope of HD03Y5.factor1981($\beta_30$) coefficient is -1088.60 with p-value: 0.535290. The slope of HD03Y5.factor1986($\beta_31$) coefficient is -2759.91. with p-value: 0.119681. The slope of HD03Y5.factor1991($\beta_32$) coefficient is -5609.55 with p-value : 0.001713. The slope of HD03Y5.factor1996($\beta_33$) coefficient is -8077.81 with p-value : 7.76e-06. The slope of HD03Y5.factor2001($\beta_34$) coefficient is -13195.24 with p-value : 5.41e-13. The slope of HD03Y5.factor2006($\beta_35$) coefficient is -22488.01 with p-value: less than 2e-16. The slope of HD03Y5.factor2011($\beta_36$) coefficient is -30169.67 with p-value: less than 2e-16. The slope of JOBINS1($\beta_37$) coefficient is 15430.85 with p-value: less than 2e-16. The slope of JOBVAC1($\beta_38$) coefficient is 6310.56 with p-value: less than 2e-16. The slope of OCEDRLP2($\beta_39$) coefficient is -2972.58 with p-value: less than 2e-16. The slope of OCEDRLP3($\beta_40$) coefficient is -12693.79 with p-value: less than 2e-16. The slope of NOCPRMG2($\beta_41$) coefficient is -13316.92 with p-value: less than 2e-16. The slope of NOCPRMG3($\beta_42$) coefficient is -10504.25 with p-value: less than 2e-16. The slope of NOCPRMG4($\beta_43$) coefficient is -6288.68 with p-value: less than 2e-16. The slope of NOCPRMG5($\beta_44$) coefficient is -2653.75 with p-value: 9.18e-09. The slope of NOCPRMG6($\beta_45$) coefficient is -2047.54 with p-value: 1.82e-06. The slope of NOCPRMG7($\beta_46$) coefficient is -5906.09 with p-value: less than 2e-16. The slope of EMSEC2($\beta_47$) coefficient is 141.53 with p-value: 0.751316. The slope of EMSEC3($\beta_48$) coefficient is 13642.81 with p-value: less than 2e-16. The slope of EMSEC4($\beta_49$) coefficient is 19090.29 with p-value: less than 2e-16. The slope of WAPRSM2($\beta_50$) coefficient is -10398.56 with p-value: less than 2e-16. The slope of WAPRSM3($\beta_51$) coefficient is 3457.58 with p-value: less than 2e-16. The slope of WAPRSM4($\beta_52$) coefficient is 3098.02 with p-value: 7.32e-12. The slope of WAPRSM5($\beta_53$) coefficient is -4671.76 with p-value: less than 2e-16. The slope of JOBSATIS2($\beta_54$) coefficient is -5186.28 with p-value: less than 2e-16. The slope of JOBSATIS3($\beta_55$) coefficient is -7440.18 with p-value: less than 2e-16. The slope of JOBSATIS4($\beta_56$) coefficient is -8806.35 with p-value: less than 2e-16. The slope of SATADV2($\beta_57$) coefficient is -2302.45 with p-value: less than 2e-16. The slope of SATADV3($\beta_58$) coefficient is -4166.34 with p-value: less than 2e-16. The slope of SATADV4($\beta_59$) coefficient is -7314.22 with p-value: less than 2e-16. <br />
+  To interpret p-value in each factor, the p-values of newBA03Y51961, newBA03Y51966, newBA03Y51971, newBA03Y51996, HD03Y5.factor1966, HD03Y5.factor1971, HD03Y5.factor1976, HD03Y5.factor1981, HD03Y5.factor1986, and EMSEC2 are higher than the significant level(0.05). It means they are irrelevant factors to analyze the summary. <br />
+
+3. Report the $R^2$ and adjusted $R^2$ of your model. What are the meaning of these values? Run a diagnostic plot for your model. Is your model a good fit? Is it easy to interpret? 
+
+```{r}
+
+# show the final regression model's dignostic plots
+par(mfrow = c(2,2))
+plot(model.1)
+
+```
+
+  The Multiple $R^2$ value is 0.5163, and adjusted $R^2$ value is 0.516. $R^2$ means this model could explain 51.63% the variance in this data. Adjusted $R^2$ controls again the model increase or decrease for the number of predictors in the model compared to the multiple $R^2$. In this case, since adjusted $R^2$ decreases, it means a predictor improves the model by less than expected by chance. Through the diagnostic plot, there are somewhat violated in independence, and normality in the right tail, but it is somewhat tolerable to qualify a model. Therefore, my model is a good fit. Besides, it is easy to interpret since the salary is significantly increased or decreased depending on a factor such as DGRDG and EMSEC in the summary. <br />
+  
+
+4. Suppose you want to choose a career path to maximize your SALARY. Which career path would you choose base on your model? (Detail which highest degree you should obtain in which major, which sector should your employer be, etc). 
+
+  Through my model, I would obtain professional Engineering since the slopes of NDGMEMG5(the highest of degree for Engineering) and DGRDG4(highest degree for professional) are the highest around 2693.26 and 33158.06 respectively. I should also select the Business or Industry because EMSEC4(Employer Sector for Business or Industry) is the highest slope around 19090.29 to increase salary. To maximize more salary, I should also work full time over 40 hours per week and 40 ~ 52 weeks per year since the slopes of HRSWKGR4 and WKSWKGR4 are 37616.80 and 20033.11 each. Also, I had better do primary work activity about management or administration in the field since the slope of WAPRSM3 is 3457.58.
+
+## Regression 2: job satisfaction vs other variables
+
+Recode JOBSATIS into two categories: "satisfied" = "somewhat/very satisfied", and "not satisfied" = "somewhat/very dissatisfied". Build a logistic regression model to predict the recoded job satisfaction based on the other variables. 
+
+1. Detail how you did variable selection: which models did you run, why did you discard certain models or variables, any variable transformations you did and why, which diagnostic tests did you run and what they showed, justifications if you removed outliers. How did you decide to deal with missing values in this dataset? 
+  
+  To consider the job satisfaction, I must exclude SATADV(Satisfaction principal job's opportunities for advancement), SATBEN(Satisfaction principal job benefits), SATCHAL(Satisfaction principal job's intellectual challenge), SATIND(Satisfaction principal job's degree of independence), SATLOC(Satisfaction principal job's job location), SATRESP(Satisfaction principal job's level of responsibility), SATSAL(Satisfaction principal job salary), SATSEC(Satisfaction principal job's job security), SATSOC(Satisfaction principal job's contribution to society). This is because the factors are really closed relation to the job satisfaction, and make ROC Curve ridiculous between 0.92~1. Next, I should add more variables such as NBAMEMG, NDGMEMG, and so on to find the correlation between job satisfaction. Finally, I find an ideal model with 16 variables(NDGMEMG+DGRDG+Full.Part+MGRNAT+MGROTH+MGRSOC+WAPRSM+NOCPRMG+AGE.factor+EMSEC+GENDER+RACETH+JOBINS+JOBPENS+JOBPROFT+JOBVAC). The other variables are irrelevant to the job satisfaction or make the model sharply drop the AUROC value when we plotROC test.
+  I create other transformed variable about HRSWKGR to distinguish whether it is part-time or full-time instead of specific range time. I recode JOBSATIS into two categories: "satisfied" = "somewhat/very satisfied", and "not satisfied" = "somewhat/very dissatisfied." as instruction. Besides, I transformed AGE variable as factor from numerical since I want to check the correlation of age and job satisfaction in detail. In reference, we use for diagnostic tests as stepAIC. In my model, there is no missing values like my regression 1 such as missing or blank values.
+  
+2. Call your final regression model \texttt{model.lm}. Clearly show your final regression model: the R command, and the R output summary. Write down the equation that R gives you. Interpret all the coefficients and the $p$-values associated with the coefficients. 
+
+```{r}
+# recode overall job satisfaction as job integration with two categories "somewhat/very satisfied" and "somewhat/very dissatisfied"
+emp.data.df$JOB_Inte[emp.data.df$JOBSATIS == 1 | emp.data.df$JOBSATIS == 2] <- 0
+emp.data.df$JOB_Inte[emp.data.df$JOBSATIS == 3 | emp.data.df$JOBSATIS == 4] <- 1
+# Create other variable about part or full time job using HRSWKGR
+emp.data.df$Full.Part <- emp.data.df$HRSWKGR
+# 1 is part-time, and 2 is full-time
+emp.data.df$Full.Part[emp.data.df$HRSWKGR == 1 | emp.data.df$HRSWKGR == 2] <- 1
+emp.data.df$Full.Part[emp.data.df$HRSWKGR == 3 | emp.data.df$HRSWKGR == 4] <- 2
+# set age as factor from numerical
+emp.data.df$AGE.factor <- as.factor(emp.data.df$AGE)
+# call the information value to run ROC Curve
+library(InformationValue)
+# set my final regression model
+model.2 <- glm(JOB_Inte ~ NDGMEMG+DGRDG+Full.Part+MGRNAT+MGROTH+MGRSOC+WAPRSM+WASCSM+NOCPRMG+AGE.factor+EMSEC+GENDER+RACETH+JOBINS+JOBPENS+JOBPROFT+JOBVAC,data = emp.data.df)
+
+# show the summary of the model as stepAIC
+summary(stepAIC(model.2))
+
+```
+  In the equation, $Y = 0.1619459+0.0032484\beta_1+0.0105323\beta_2+0.0124570\beta_3-0.0110364\beta_4-0.0149017\beta_5+0.0010115\beta_6-0.0041034\beta_7+0.0081354\beta_8-0.0178883\beta_9-0.0369413\beta_10-0.0230408\beta_11-0.0145990\beta_12+0.0054230\beta_13+0.0174989\beta_14-0.0005260\beta_15+0.0114134\beta_16-0.0022403\beta_17-0.0030513\beta_18-0.0061431\beta_19+0.0075433\beta_20+0.0328004\beta_21+0.0124224\beta_22+0.0003443\beta_23-0.0315891\beta_24+0.0041627\beta_25-0.0046633\beta_26+0.0116292\beta_27+0.0263961\beta_28+0.0283228\beta_29+0.0080549\beta_30+0.0044923\beta_31+0.0101717\beta_32+0.0074739\beta_33+0.0026753\beta_34+0.0085513\beta_35+0.0048033\beta_36+0.0072936\beta_37+0.0025305\beta_38+0.0045876\beta_39-0.0059047\beta_40-0.0027537\beta_41-0.0054610\beta_42-0.0067000\beta_43-0.0043148\beta_44-0.0049155\beta_45-0.0080611\beta_46+0.0011760\beta_47-0.0017080\beta_48-0.0057435\beta_49+0.0041028\beta_50-0.0092184\beta_51+0.0093860\beta_52+0.0088799\beta53+0.0002430\beta54-0.0103160\beta55-0.0126123\beta56-00117188\beta57-0.0042322\beta58-0.00042898\beta59-0.0166234\beta60-0.0119892\beta61-0.0306371\beta62-0.0233987\beta63-0.0523239\beta64-0.0369649\beta65-0.0530947\beta66-0.0595649\beta67-0.0668585\beta68-0.0867837\beta69-0.0742438\beta70-0.0916283\beta71-0.0919303\beta72-0.0794529\beta73-0.0900155\beta74-0.0935300\beta75-0.1115647\beta76-0.0109122\beta77-0.0139239\beta78+0.0042655\beta79+0.0036238\beta80-0.0144723\beta81+0.0117192\beta82-0.0206773\beta83-0.0362523\beta84-0.0054258\beta85$.<br />
+  Intercept($\beta_0$) coefficient is 0.1619459 with p-value: less than 2e-16 which means the standard of NDGMEMG1(highest degree in Computer and mathematical sciences), DGRDG1: Bachelor's, MGRNAT0(no technical expertise required in natural sciences), MGROTH0(no technical expertise required in other), MGRSOC0(no technical expertise required in social sciences) WAPRSM1(Research and Development), WASCSM1(awarding first bachelor degree in location of non-US school), NOCPRMG1(Computer and mathematical scientists job), AGE26.factor(26 years old),EMSEC1(2 year college or other school system in employer sector), GENDER1(female), RACETH1(Asian), EMSEC1(employer sector for years college or other school system), JOBPENS0(No pension/retirement plan), JOBPROFT0(no profit-sharing plan), and JOBVAC0(no paid vacation/sick/personal days). <br />
+ The slope of NDGMEMG2($\beta_1$) coefficient is 0.0032484 with p-value: 0.521354. The slope of NDGMEMG3($\beta_2$) coefficient is 0.0105323 with p-value: 0.068492. The slope of NDGMEMG4($\beta_3$) coefficient is 0.0124570 with p-value: 0.011118. The slope of NDGMEMG5($\beta_4$) coefficient is -0.0110364 with p-value: 0.015161.  The slope of NDGMEMG6($\beta_5$) coefficient is -0.0149017 with p-value: 0.002705.  The slope of NDGMEMG7($\beta_6$) coefficient is 0.0010115 with p-value: 0.833241. The slope of DGRDG2($\beta_7$) coefficient is -0.0041034 with p-value: 0.114090. The slope of DGRDG3($\beta_8$) coefficient is 0.0081354 with p-value: 0.007186. The slope of DGRDG4($\beta_9$) coefficient is -0.0178883 with p-value: 0.001922. The slope of MGRNAT1($\beta_10$) coefficient is -0.0369413 with p-value: less than 2e-16 closed to 0. The slope of MGROTH1($\beta_11$) coefficient is -0.0230408 with p-value: less than 2e-16 closed to 0. The slope of MGRSOC1($\beta_12$) coefficient is -0.0145990 with p-value: 3.15e-07. The slope of WAPRSM2($\beta_13$) coefficient is 0.0054230 with p-value: 0.198798. The slope of WAPRSM3($\beta_14$) coefficient is 0.0174989 with p-value: 5.55e-09. The slope of WAPRSM4($\beta_15$) coefficient is -0.0005260 with p-value: 0.913374. The slope of WAPRSM5($\beta_16$) coefficient is 0.0114134 with p-value: 0.000384. The slope of WASCSM2($\beta_17$) coefficient is -0.0022403 with p-value: 0.616248. The slope of WASCSM3($\beta_18$) coefficient is -0.0030513 with p-value: 0.242108. The slope of WASCSM4($\beta_19$) coefficient is -0.0061431 with p-value: 0.232114. The slope of WASCSM5($\beta_20$) coefficient is 0.0075433 with p-value: 0.041132. The slope of WASCSM6($\beta_21$) coefficient is 0.0328004 with p-value: less than 2e-16. The slope of NOCPRMG2($\beta_22$) coefficient is 0.0124224 with p-value: 0.030418. The slope of NOCPRMG3($\beta_23$) coefficient is 0.0003443 with p-value: less than 2e-16.  The slope of NOCPRMG4($\beta_24$) coefficient is -0.0315891 with p-value: 1.89e-07. The slope of NOCPRMG5($\beta_25$) coefficient is 0.0041627 with p-value: 0.393047. The slope of NOCPRMG6($\beta_26$) coefficient is -0.0046633 with p-value: 0.306467. The slope of NOCPRMG7($\beta_27$) coefficient is 0.0116292 with p-value 0.008966. The slope of AGE.factor27($\beta_28$) coefficient is 0.0263961 with p-value: 0.087212. The slope of AGE.factor28($\beta_29$) coefficient is 0.0283228 with p-value: 0.076539. The slope of AGE.factor29($\beta_30$) coefficient is 0.0080549 with p-value: 0.614200. The slope of AGE.factor30($\beta_31$) coefficient is 0.0044923. with p-value: 0.779475. The slope of AGE.factor31($\beta_32$) coefficient is 0.0101717 with p-value : 0.530824. The slope of AGE.factor32($\beta_33$) coefficient is 0.0074739 with p-value : 0.644234. The slope of AGE.factor33($\beta_34$) coefficient is 0.0026753 with p-value : 0.868759. The slope of AGE.factor34($\beta_35$) coefficient is 0.0085513 with p-value: 0.600204. The slope of AGE.factor35($\beta_36$) coefficient is 0.0048033 with p-value: 0.770287. The slope of AGE.factor36($\beta_37$) coefficient is 0.0072936 with p-value: 0.658403. The slope of AGE.factor37($\beta_38$) coefficient is 0.0025305 with p-value: 0.878336. The slope of AGE.factor38($\beta_39$) coefficient is 0.0045876 with p-value: 0.780433. The slope of AGE.factor39($\beta_40$) coefficient is -0.0059047 with p-value: 0.721299. The slope of AGE.factor40($\beta_41$) coefficient is -0.0027537 with p-value: 0.867829. The slope of AGE.factor41($\beta_42$) coefficient is -0.0054610 with p-value: 0.741095. The slope of AGE.factor42($\beta_43$) coefficient is -0.0067000 with p-value: 0.684141. The slope of AGE.factor43($\beta_44$) coefficient is -0.0043148 with p-value: 0.794286. The slope of AGE.factor44($\beta_45$) coefficient is -0.0049155 with p-value: 0.766890. The slope of AGE.factor45($\beta_46$) coefficient is -0.0080611 with p-value: 0.627882. The slope of AGE.factor46($\beta_47$) coefficient is 0.0011760 with p-value: 0.943767. The slope of AGE.factor47($\beta_48$) coefficient is -0.0017080 with p-value: 0.918590. The slope of AGE.factor48($\beta_49$) coefficient is -0.0057435 with p-value: 0.729301. The slope of AGE.factor49($\beta_50$) coefficient is 0.0041028 with p-value: 0.803776. The slope of AGE.factor50($\beta_51$) coefficient is -0.0092184 with p-value: 0.578418. The slope of AGE.factor51($\beta_52$) coefficient is 0.0093860 with p-value: 0.572326. The slope of AGE.factor52($\beta_53$) coefficient is 0.0088799 with p-value: 0.594254. The slope of AGE.factor53($\beta_54$) coefficient is 0.0002430 with p-value: 0.988347. The slope of AGE.factor54($\beta_55$) coefficient is -0.0103160 with p-value: 0.534827. The slope of AGE.factor55($\beta_56$) coefficient is -0.0126123 with p-value: less than 0.449553. The slope of AGE.factor56($\beta_57$) coefficient is -0.0117188 with p-value: 0.481346. The slope of AGE.factor57($\beta_58$) coefficient is -0.0042322 with p-value: 0.801049. The slope of AGE.factor58($\beta_59$) coefficient is -0.0042898 with p-value: 0.797896. The slope of AGE.factor59($\beta_60$) coefficient is -0.0166234 with p-value: 0.322856. The slope of AGE.factor60($\beta_61$) coefficient is -0.0119892 with p-value: 0.477884. The slope of AGE.factor61($\beta_62$) coefficient is -0.0306371 with p-value: 0.070744. The slope of AGE.factor62($\beta_63$) coefficient is -0.0233987 with p-value: 0.174484. The slope of AGE.factor63($\beta_64$) coefficient is -0.0523239 with p-value: 0.002506. The slope of AGE.factor64($\beta_65$) coefficient is -0.0369649 with p-value: 0.034757. The slope of AGE.factor65($\beta_66$) coefficient is -0.0530947 with p-value: 0.002614. The slope of AGE.factor66($\beta_67$) coefficient is -0.0595649 with p-value: 0.001015. The slope of AGE.factor67($\beta_68$) coefficient is -0.0668585 with p-value: 0.000465.The slope of AGE.factor68($\beta_69$) coefficient is -0.0867837 with p-value: 8.09e-06. The slope of AGE.factor69($\beta_70$) coefficient is -0.0916283 with p-value: 4.27e-06. The slope of AGE.factor70($\beta_71$) coefficient is -0.0916283 with p-value: 4.27e-06. The slope of AGE.factor71($\beta_72$) coefficient is -0.0919303 with p-value: 1.80e-05. The slope of AGE.factor72($\beta_73$) coefficient is -0.0794529 with p-value: 0.000359. The slope of AGE.factor73($\beta_74$) coefficient is -0.0900155 with p-value: 0.000212. The slope of AGE.factor74($\beta_75$) coefficient is -0.0935300 with p-value: 0.000165. The slope of AGE.factor75($\beta_76$) coefficient is -0.1115647 with p-value: 2.88e-05. The slope of EMSEC2($\beta_77$) coefficient is -0.0109122 with p-value: 0.020328. The slope of EMSEC3($\beta_78$) coefficient is -0.0139239 with p-value: 0.009190. The slope of EMSEC4($\beta_79$) coefficient is 0.0042655 with p-value: 0.367941. The slope of GENDER2($\beta_80$) coefficient is 0.0036238 with p-value: 0.093722. The slope of RACETH2($\beta_81$) coefficient is -0.0144723 with p-value: 1.38e-07. The slope of RACETH3($\beta_82$) coefficient is 0.0117192 with p-value: 0.000326. The slope of JOBPENS1($\beta_83$) coefficient is -0.0206773 with p-value: 2.43e-14. The slope of JOBPROFT1($\beta_84$) coefficient is -0.0362523 with p-value: less than 2e-16. The slope of JOBVAC1($\beta_85$) coefficient is -0.0054258 with p-value: 0.079581. <br />
+  To analyze p-values, p-values of NDGMEMG2, NDGMEMG3, DGRDG2, WAPRSM2, WAPRSM4, WASCSM2, WASCSM3, WASCSM4, NOCPRMG3, NOCPRMG5, NOCPRMG6, AGE.factor27 ~ AGE.factor62 are higher than significant level(0.05). It means they are not useful to analyze the summary.
+
+3. Report your model's ROC curve and pseudo R-squared, and report any diagnostic plots or statistics that you used. Is your model a good fit? Is it easy to interpret? 
+
+```{r}
+
+par(mfrow = c(2,2))
+plot(model.2)
+plotROC(emp.data.df$JOB_Inte, model.2$fitted.values)
+
+```
+
+  The ROC Curve value(pseudo-$R^2$) is 0.6233. In the diagnostic plots, independence, normality, and constant variance are totally violated. Nevertheless, since ROC Curve value is higher than 0.6, it is good fit model. Besides, it is easy to interpret that job satisfaction has positively been infuenced by the highest degree of field major(NDGMEMG), primary work activity(WAPRSM), secondary work activity(WASCSM), and Job code for principal job(NOCPRMG) in broad outlines.
+
+4. Suppose you want to choose a career path to maximize your job satisfaction. Which career path would you choose base on your model? (Detail which highest degree you should obtain in which major, which sector should your employer be, etc). 
+
+  In this model, I should choose Social and related sciences(NDGMEMG4) with Doctorate(DGRDG3). This is because the slopes of NDGMEMG4 and DGRDG3 is the highest positive rate. To maximize my job satisfaction, I had better do management and administration(WAPRSM3) as primary work activity and no secondary activity(WASCSM6). Lastly, I would enter to the business or industry(EMSEC4) after graduation as much as I could. In the business or industry, I could work my major job Social and related sciences with field of Biological, agricultural and other life scientists(NOCPRMG2).
+## Fact-check news outlets
+
+News outlets regularly examine relationships between degrees, job satisfaction and income. 
+Here are various claims from three different outlets. 
+
+1. Gallup: Does Higher Learning = Higher Job Satisfaction?
+\url{https://news.gallup.com/poll/6871/does-higher-learning-higher-job-satisfaction.aspx}
+
+This article claims that: 
+a. Education level has very little to do with job satisfaction, or satisfaction with income and time flexibility. 
+b. Having the opportunity to do what you do best is the one factor that correlates most highly with overall job satisfaction is.<br />
+
+(a)
+```{r}
+# show the proportional table to check a correlation between job satisfaction and Educational level
+edu.jobsatis.table <- 100*prop.table(table(emp.data.df$DGRDG, emp.data.df$JOBSATIS))
+colnames(edu.jobsatis.table) <- c("Very satistifed", "Somewhat satisfied", "Somewhat dissatisfied", "Very dissatisfied")
+rownames(edu.jobsatis.table) <- c("Bachelor's", "Master's", "Doctorate", "Professional")
+edu.jobsatis.table
+# show the bachelor's percentage about job satisfaction sequentially "Very satistifed", "Somewhat satisfied", "Somewhat dissatisfied", "Very dissatisfied"
+edu.jobsatis.table[1,1]*100/sum(edu.jobsatis.table[1, ])
+edu.jobsatis.table[1,2]*100/sum(edu.jobsatis.table[1, ])
+edu.jobsatis.table[1,3]*100/sum(edu.jobsatis.table[1, ])
+edu.jobsatis.table[1,4]*100/sum(edu.jobsatis.table[1, ])
+# show the master's percentage about job satisfaction sequentially "Very satistifed", "Somewhat satisfied", "Somewhat dissatisfied", "Very dissatisfied"
+edu.jobsatis.table[2,1]*100/sum(edu.jobsatis.table[2, ])
+edu.jobsatis.table[2,2]*100/sum(edu.jobsatis.table[2, ])
+edu.jobsatis.table[2,3]*100/sum(edu.jobsatis.table[2, ])
+edu.jobsatis.table[2,4]*100/sum(edu.jobsatis.table[2, ])
+# show the doctorate's percentage about job satisfaction sequentially "Very satistifed", "Somewhat satisfied", "Somewhat dissatisfied", "Very dissatisfied"
+edu.jobsatis.table[3,1]*100/sum(edu.jobsatis.table[3, ])
+edu.jobsatis.table[3,2]*100/sum(edu.jobsatis.table[3, ])
+edu.jobsatis.table[3,3]*100/sum(edu.jobsatis.table[3, ])
+edu.jobsatis.table[3,4]*100/sum(edu.jobsatis.table[3, ])
+# show the professional's percentage about job satisfaction sequentially "Very satistifed", "Somewhat satisfied", "Somewhat dissatisfied", "Very dissatisfied"
+edu.jobsatis.table[4,1]*100/sum(edu.jobsatis.table[4, ])
+edu.jobsatis.table[4,2]*100/sum(edu.jobsatis.table[4, ])
+edu.jobsatis.table[4,3]*100/sum(edu.jobsatis.table[4, ])
+edu.jobsatis.table[4,4]*100/sum(edu.jobsatis.table[4, ])
+```
+  First of all, we need to test the correlation between education level vs job satisfaction as proportable table method. In the varialbles, I selected DGRDG(Type of highest certificate or degree) which is educational level and JOBSATIS(overall job satisfaction). When I compute job satisfaction distribution each degree: Bachelor, Master, Doctorate, and Professional, there is not prominently different percentage between degrees. There is slightly difference within 2~14% to compare each degree. Therefore, the claim is true that Education level has very little to do with job satisfaction. <br />
+  
+(b) <br />
+
+  In the question, the having opportunity to do what you best means the job's degree of independence. It is related to question number 7 in the Basic Analysis section. Using the question number 7 proportion table, the most important job satisfaction is degree of independence. since around 64.58% of the highest somewhat/very satisfied proportion is reported in the degree of independence while around 46.35% of the highest somewhat/very dissatisfied proportion is reported in the principal job's opportunities for advancement. It means depending on the aspect for degree of independence, it has the greatest influence on the job satisfaction. Therefore, the claim is true. <br />
+
+2. Diverse Education: College-educated Americans More Likely Experience Job Satisfaction, Lead Healthier Lives, Study Says
+\url{https://diverseeducation.com/article/14156/}
+
+This article claims that:
+a. Certain race groups earn less than others when they have the same education level. 
+b. STEM (science, technology, engineering and mathematics) careers, in which minorities are underrepresented, tend to pay more than careers in social sciences. 
+
+(a)
+```{r}
+# set the pair of groups : bachelor, master, doctorate, and professional
+bach = emp.data.df[emp.data.df$DGRDG == 1,]
+mast = emp.data.df[emp.data.df$DGRDG == 2,]
+doct = emp.data.df[emp.data.df$DGRDG == 3,]
+prof = emp.data.df[emp.data.df$DGRDG == 4,]
+# Next, we would do anova test
+anova(lm(SALARY ~ RACETH, data = bach))
+anova(lm(SALARY ~ RACETH, data = mast))
+anova(lm(SALARY ~ RACETH, data = doct))
+anova(lm(SALARY ~ RACETH, data = prof))
+
+```
+  To verify the claim, we need to use variables to match the same education level about RACETH and DGRDG. After that we need to use salary to compare it. We would use 4 hypothesis test as ANOVA method. As First hypothesis test, $H_0$ : Salary and race with same bachelor degree are independent, $H_A$ : Salary and race with same bachelor degree are dependent. As second hypothesis test, $H_0$ : Salary and race with same master degree are independent, $H_A$ : Salary and race with same master degree are dependent. As third hypothesis test, $H_0$ : Salary and race with same doctorate are independent, $H_A$ : Salary and race with same doctorate degree are dependent. As fourth hypothesis test, $H_0$ : Salary and race with same professional degree are independent, $H_A$ : Salary and race with same professional degree are dependent. In ANOVA test, all p-values in each tests are less than significant level(0.05). Therefore, we could contradict $H_0$ in all four hypothesis test. We conclude that $H_A$. Based on $H_A$, since salary and race with same degree are dependent, it is true that certain race groups earn less than others when they have the same education level. 
+  
+(b)
+```{r}
+# check the chi-square test between MINRTY and NDGMEMG(the highest degree major) as first step.
+chisq.test(emp.data.df$MINRTY, emp.data.df$NDGMEMG)
+
+# Since we know that MINRTY and NDGMEMG are dependent, we check ANOVA test between STEM and social science of NDGMEMG(the highest degree major) as second step
+anova(lm(SALARY ~ NDGMEMG, data=emp.data.df))
+```
+  To verify the claim, we need to two steps of hypothesis tests by chi-square and ANOVA. In the chi-square test, we would test that $H_0$ : minority and highest degree of major(career) are independent, and $H_A$ : minority and highest degree of major(career) are dependent. Since p-value is 2.2e-16 which is less than significant level, we could contradict $H_0$. Therefore, minority and highest degree of major(career) are dependent. Next, we would do ANOVA test to check the correlation between SALARY and NDGMEMG. We would test that $H_0$ : salary and highest degree of major(career) are independent, and $H_A$ : salary and highest degree of major(career) are dependent. Since p-value is 2.2e-16 which is less than significant level, we could contradict $H_0$. Therefore, minority and highest degree of major(career) are dependent. As a result, we could conclude that the claim is true that STEM (science, technology, engineering and mathematics) careers, in which minorities are underrepresented, tend to pay more than careers in social sciences.
+
+3. PEW: the rising cost of not going to college
+\url{https://www.pewsocialtrends.org/2014/02/11/the-rising-cost-of-not-going-to-college/}
+
+This article claims that:
+a. Those who studied science or engineering are the most likely to say that their current job is ?€œvery closely?€? related to their college or graduate field of study. 
+
+```{r}
+# set another variable to test it exactly as stem NDGMEMG.
+emp.data.df$NDGMEMG.STEM <- (emp.data.df$NDGMEMG == 1 | emp.data.df$NDGMEMG == 2 | emp.data.df$NDGMEMG == 3 | emp.data.df$NDGMEMG == 4 | emp.data.df$NDGMEMG == 5 | emp.data.df$NDGMEMG == 6)
+
+# set chi-square test NDGMEMG.STEM and OCEDRLP
+chisq.test(emp.data.df$NDGMEMG.STEM, emp.data.df$OCEDRLP)
+```
+  To check the claim, we need to use variables NDGMEMG and OCEDRLP. However, we need to create a new variable as NDGMEMG stem because we want to check only STEM major in NDGMEMG. Next, we would do a hypothesis test as chi-square. $H_0$ : the highest degree in STEM majors and principal job related to highest degree are independent. $H_A$ : the highest degree in STEM majors and principal job related to highest degree are dependent. Since p-value is 1.246e-14, we could contract $H_0$. Therefore, the highest degree in STEM majors and principal job related to highest degree are dependent. In conclusion, it is true that those who studied science or engineering are the most likely to say that their current job is ¡°very closely¡± related to their college or graduate field of study.
+  
+1. For each of the claim above, use your analysis above to verify or disprove it.  
+2. If you disprove any claims, explain why your conclusions could be different from theirs. For example, you could elaborate on major differences between the dataset you are using and the survey used by the article, or your method of analysis vs theirs. 
+
+## Lay summary
+
+Give a two to three-page summary to highlight the findings in the technical report for the general public. Your summary should contain four sections:
+
+- highlights from the basic analysis
+
+- highlights from the salary model
+
+- highlights from the job satisfaction model
+
+- highlights from the fact-check section
+
+Basic analysis
+In question 1, there are two different surveys (NSCG and SDR). To compare NSCG and SDR, the population of NSCG is individuals residing in the US, while SDR is doctorate degree in STEM in the US. Its sample of NSCG is ACES households, and the sample of SDR is a stratified sample from the eligible individuals in the Doctorate Records File. Those surveys used the similar sampling method as stratified. When we think of both survey biases with combination, the main points of biases are we do not know the ratio of populations. 
+In question 2, the population of male is around 13.3% more than that of female regardless of race. Considering overall race/ethnicity, the majority of race/ethnicity is White regardless of gender whereas the minority of race/ethnicity is Asian.
+In question 3, in the field of major for first bachelor degree and Year of first bachelor degree, between 1981 and 1990, Engineering degrees were popular more than others. Between 1991 and now, Social and related science degrees have been popular more than others. The more people obtained the highest degree in all majors every range of years, but the size of sample is sharply decreased in 2011 or later. In the field of major for highest degree and Year of highest degree, the most people of the sample obtained Engineering degrees between 1961 and 1965. Between 1966 and 2010, most of people obtained Social and related sciences or Engineering.
+In question 4, through the Chi-Square test, we concluded that there is a significant difference in retention rates among different field of majors. In question 5, the majority of people work with regular hours year-round. Also, we observed that illness, retirement, or other(combined) are the major reasons that led people to not work at the time of survey. In question 6, we tested 3 hypothesis tests as Chi-square for Degree relevance vs job type, degree that they trained for, and principal activity in people¡¯s job. We conclude that Degree relevance is dependent on all three of them through the tests. In question 7, the most important job satisfaction is independence since its ratio(64.58%) is the most highest. People who were very satisfied with their jobs resulted from the satisfaction of independence. However, people who were very dissatisfied with their jobs resulted from the satisfaction of principal job's opportunities for advancement.
+
+Regression 1: SALARY vs other variables
+In my model, I created an appropriate model with 15 variables: NDGMEMG, DGRDP, HRSWKGR, WKSWKGR, BA03Y5, BADGRUS, HD03Y5, JOBINS, JOBVAC, OCEDRLP, NOCPRMG, EMSEC, WAPRSM, JOBSATIS, SATADV. This is because I think they are the most useful variables to predict salary. Besides, I used stepAIC method in my model to exclude an outlier. In the equation, $Y = 10479.64-7774.39\beta_1-3180.00\beta_2-7327.39\beta_3+2693.26\beta_4-5496.25\beta_5-3940.30\beta_6+12776.16\beta_7+32234.99\beta_8+33158.06\beta_9+15859.64\beta_10+27798.09\beta_11+37616.80\beta_12+5154.30\beta_13+15559.13\beta_14+20033.11\beta_15-3403.14\beta_16+1708.99\beta_17+2961.26\beta_18+5070.99\beta_19+5879.63\beta_20+5768.02\beta_21+4699.60\beta_22+1972.59\beta_23-2123.71\beta_24-4417.91\beta_25+1167.62\beta_26-212.63\beta_27-91.76\beta_28-979.77\beta_29-1088.60\beta_30-2759.91\beta_31-5609.55\beta_32-8077.81\beta_33-13195.24\beta_34-22488.01\beta_35-30169.67\beta_36+15430.85\beta_37+6310.56\beta_38-2972.58\beta_39-12693.79\beta_40-13316.92\beta_41-10504.25\beta_42-6288.68\beta_43-2653.75\beta_44-2047.54\beta_45-5906.09\beta_46+141.53\beta_47+13642.81\beta_48+19090.29\beta_49-10398.56\beta_50+3457.58\beta_51+3098.02\beta_52-4671.76\beta_53-5186.28\beta_54-7440.18\beta_55-8806.35\beta_56-2302.45\beta_57-4166.34\beta_58-7314.22\beta_59$. To interpret p-value in each factor, the p-values of newBA03Y51961, newBA03Y51966, newBA03Y51971, newBA03Y51996, HD03Y5.factor1966, HD03Y5.factor1971, HD03Y5.factor1976, HD03Y5.factor1981, HD03Y5.factor1986, and EMSEC2 are higher than the significant level(0.05). It means they are irrelevant factors to analyze the summary. The model is a good fit since there is no problem about violation through diagnostic test. In this model, I should make my career professional Engineering and obtain a job in a business or industry with full-time and year-round working(40~52 years) since NDGMEMG5 and EMSEC4
+
+Regression 2: job satisfaction vs other variables
+  I find an ideal model with 16 variables(NDGMEMG+DGRDG+Full.Part+MGRNAT+MGROTH+MGRSOC+WAPRSM+NOCPRMG+AGE.factor+EMSEC+GENDER+RACETH+JOBINS+JOBPENS+JOBPROFT+JOBVAC). The other variables are irrelevant to the job satisfaction or make the model sharply drop the AUROC value when we plotROC test. In the equation, $Y = 0.1619459+0.0032484\beta_1+0.0105323\beta_2+0.0124570\beta_3-0.0110364\beta_4-0.0149017\beta_5+0.0010115\beta_6-0.0041034\beta_7+0.0081354\beta_8-0.0178883\beta_9-0.0369413\beta_10-0.0230408\beta_11-0.0145990\beta_12+0.0054230\beta_13+0.0174989\beta_14-0.0005260\beta_15+0.0114134\beta_16-0.0022403\beta_17-0.0030513\beta_18-0.0061431\beta_19+0.0075433\beta_20+0.0328004\beta_21+0.0124224\beta_22+0.0003443\beta_23-0.0315891\beta_24+0.0041627\beta_25-0.0046633\beta_26+0.0116292\beta_27+0.0263961\beta_28+0.0283228\beta_29+0.0080549\beta_30+0.0044923\beta_31+0.0101717\beta_32+0.0074739\beta_33+0.0026753\beta_34+0.0085513\beta_35+0.0048033\beta_36+0.0072936\beta_37+0.0025305\beta_38+0.0045876\beta_39-0.0059047\beta_40-0.0027537\beta_41-0.0054610\beta_42-0.0067000\beta_43-0.0043148\beta_44-0.0049155\beta_45-0.0080611\beta_46+0.0011760\beta_47-0.0017080\beta_48-0.0057435\beta_49+0.0041028\beta_50-0.0092184\beta_51+0.0093860\beta_52+0.0088799\beta53+0.0002430\beta54-0.0103160\beta55-0.0126123\beta56-00117188\beta57-0.0042322\beta58-0.00042898\beta59-0.0166234\beta60-0.0119892\beta61-0.0306371\beta62-0.0233987\beta63-0.0523239\beta64-0.0369649\beta65-0.0530947\beta66-0.0595649\beta67-0.0668585\beta68-0.0867837\beta69-0.0742438\beta70-0.0916283\beta71-0.0919303\beta72-0.0794529\beta73-0.0900155\beta74-0.0935300\beta75-0.1115647\beta76-0.0109122\beta77-0.0139239\beta78+0.0042655\beta79+0.0036238\beta80-0.0144723\beta81+0.0117192\beta82-0.0206773\beta83-0.0362523\beta84-0.0054258\beta85$.
+  Since the ROC Curve value(pseudo-$R^2$) of model is 0.6233 over than 0.6, and it is good fit model. Besides, it is easy to interpret that job satisfaction has positively been infuenced by the highest degree of field major(NDGMEMG), primary work activity(WAPRSM), secondary work activity(WASCSM), and Job code for principal job(NOCPRMG) in broad outlines.  I should choose Social and related sciences(NDGMEMG4) with Doctorate(DGRDG3). This is because the slopes of NDGMEMG4 and DGRDG3 is the highest positive rate. To maximize my job satisfaction, I had better do management and administration(WAPRSM3) as primary work activity and no secondary activity(WASCSM6). Lastly, I would enter to the business or industry(EMSEC4) after graduation as much as I could. In the business or industry, I could work my major job Social and related sciences with field of Biological, agricultural and other life scientists(NOCPRMG2).
+
+Fact Check
+	Through the proportion table: education level vs job satisfaction, we cannot find that there is correlation between the two variables. This is because the difference of percentages are small between 3~14%. Therefore, the claim: Education level has very little to do with job satisfaction is true. In 1-(b), referred from Basic Analysis number 7, job for degree of independence has the greatest influence on the job satisfaction. Thus, the claim: Having the opportunity to do what you do best is the one factor that correlates most highly with overall job satisfaction is, is true.
+	In Diverse education, we did four hypothesis tests dividing 4 degree(bachelor, master, doctoral, professional) as ANOVA. We conclude that Salary and race with same degree are dependent through the tests. Therefore, the claim: Certain race groups earn less than others when they have the same education level is true. In 2-(b), through Chi-square and ANOVA sequentially, we found that minority and the highest degree major are dependent, and the highest degree major and salary are also dependent. Therefore, the claim is true that STEM (science, technology, engineering and mathematics) careers, in which minorities are underrepresented, tend to pay more than careers in social sciences.
+	In question 3, we created a new variable about STEM NDGMEMG and did hypothesis test with OCEDRLP variable as Chi-square test. Through the test, we could conclude that it is true that those who studied science or engineering are the most likely to say that their current job is ¡°very closely¡± related to their college or graduate field of study.
+
+
+
+
+
