@@ -1,0 +1,21 @@
+<?php include("/export/home/fri/public_html/common/header.php"); ?>
+
+<h2>Lab 2 Question Assignment</h2>
+       
+<div class="text"> 
+
+<!-- Type below here! -->
+
+ 1. There are two classes: Electronic Structure Methods and Empirical Potentials (Force Fields) to generate PES(Potential Energy Surface). Electronic Structure Methods take into account all electrons and nuclei in an atomic system. It uses Quantum mechanics Application projects needs for the method because Its way is accurate, but slow.
+In contrast, Empirical Potentials is a functional form of the PES. It uses free  parameters to fit the potential to have a desired properties known from either experiment or electronic
+structure calculations. Its way is fast, but not as accurate. In addition, Lennard-Jones potential belongs to Empirical Potentials.
+
+ 2. First of all, Sigma is equilibrium bond length and Epilson is the bond energy.
+
+
+<!-- And above here -->
+
+</div>
+
+<?php include("/export/home/fri/public_html/common/footer.php"); ?>
+

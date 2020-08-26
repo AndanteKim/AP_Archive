@@ -1,0 +1,14 @@
+#!/bin/bash
+#
+#$ -cwd
+#$ -j y
+#$ -N Jobname
+#$ -m es
+#$ -V
+#$ -M email@utexas.edu
+#$ -o ASE_out
+#$ -S /bin/bash
+
+python runamp.py 
+
+

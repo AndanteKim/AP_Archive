@@ -1,0 +1,29 @@
+When Alpha = 0.001
+Steps :  97
+final potential energy : -0.999999175893751
+final vector force : 0.00971540563402229
+final bondlength : 1.12229230911852
+
+When Alpha 0.003
+Steps : 21
+final potential energy : -0.999999385207398
+final vector force : -0.00837483890209967
+final bondlength : 1.12260880010988
+
+When Alpha 0.005
+Steps : 28
+final potential energy : -0.999999422372666
+final vector force : -0.00811798451151802
+final bondlength : 1.12260429326974
+
+When Alpha 0.007
+Steps : 28
+final potential energy : -0.999999635650563
+final vector force : -0.00644855936025479
+final bondlength : 1.12257501032294
+
+When Alpha 0.009
+Steps : 30
+final potential energy : -0.999999429658629
+final vector force : -0.00806666879875806
+final bondlength : 1.12260339291522

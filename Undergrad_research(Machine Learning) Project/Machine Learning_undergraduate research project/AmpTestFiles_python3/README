@@ -1,0 +1,59 @@
+Amp works by reading in atomic positions from a con file, using a built-in calculator to
+get the correct forces and energies on that con file, and then training a neural network
+to approximate the forces and energies based on atomic positions.
+
+To help with future projects I have made a few files to kickstart research utilizing AMP
+
+The first of these files is 'generate.py', which generates training and test sets. It can
+create sets using three different methods, but can always be expanded to suit different
+applications as the need arises. These three methods are:
+	1.	Optimization- Uses Newton’s method as implemented by the ASE FIRE optimizer. It 
+			takes a few parameters to use this method to generate structure including
+		a.	inter = how often the atomic positions get written out to the sets
+		b.	forcemax = the maximum force allowed in eV/A. All forces are scaled down to
+					 this value
+		c.	maxstep = the maximum step size in Angstroms that atoms can move
+	2.	Molecular Dynamics- Uses an NVE ensemble to simulate the atomic system at temperatures
+		a.	temperature = temperature in Kelvin at which MD is run
+		b.	timestep = timestep in fs for MD
+	3.	Random Generation- Uses randomly generated structures
+
+The second file is 'train.py', which trains the AMP calculator on the training set. It 
+takes two important parameters:
+	1.  convergence criteria- convergence criteria as defined by amp. You can specify
+						 the maximum forces and
+	2. max training attempts- number of times that you will try to train the AMP calculator
+						 before moving on if it fails to converge
+
+The third file is 'test.py' which creates a test set, loops through the set to compare AMP’s
+predictions to the actual predictions, and then plots this information in a graph.
+
+Included in this directory are two files which use 'generate.py', 'train.py', and 'test.py'
+to train and test an AMP calculator. 
+
+The first of these is 'runamp.py' which uses 17 parameters to train and test the calculator 
+at one set of parameters and then plots Amp’s predicted energy vs the actual energy
+predicted by the LJ potential. 
+
+The second of these is 'loopamp.py' which uses 19 parameters to train and test an amp 
+calculator at multiple parameters. It adds a loop that allows you to test multiple
+values of a parameter and plot how the MSE changes as the value of the parameter changes. 
+It adds two extra parameters that specify if the training set and/or the testing set
+should stay the same for every iteration. In the example script, it loops through 
+multiple temperatures listed in the variable temperaturearray
+
+Lastly, there are two directories that should be mentioned. 
+
+The first is called 'structures' which contains directories containing LJ clusters.
+Each of these, for example 'lj3', contains 1000 randomly generated starting structures which 
+are read in by the 'generate.py'. You can generate your own using the python script 
+'random_cluster.py' found in the directory 'generate_initial_structures'.
+
+The second of these is the directory 'submitter'. In it is the python script called 'init.py' 
+which will create a directory called 'testrun' containg several subdirectories. Each of these
+subdirectories contains a copy of all the starting files 'runamp.py','generate.py','train.py',
+'test.py', and a directory containing randomly starting structures to generate the training
+and test sets. It also contains a file 'pylab1.sub' which is used to submit jobs to the queue.
+Using this script, you can edit parameters found in 'runamp.py' in a loop and submit them to
+different directories.
+

@@ -1,0 +1,15 @@
+#!/bin/bash
+#
+#$ -cwd
+#$ -j y
+#$ -N Gradient_descent
+#$ -m es
+#$ -V
+#$ -M ksb0724@utexas.edu
+#$ -o ll_out
+#$ -S /bin/bash
+
+./intro_ase.py 
+
+
+

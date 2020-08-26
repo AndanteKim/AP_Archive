@@ -1,0 +1,15 @@
+#!/bin/bash
+#
+#$ -cwd
+#$ -j y
+#$ -N Generate_MD_training_set
+#$ -m es
+#$ -V
+#$ -M  youremail
+#$ -o ll_out
+#$ -S /bin/bash
+
+python Create_MD.py 
+
+
+

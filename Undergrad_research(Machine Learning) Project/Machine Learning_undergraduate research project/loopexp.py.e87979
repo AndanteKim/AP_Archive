@@ -1,0 +1,6 @@
+/usr/bin/id: cannot find name for group ID 1047
+import: unable to open X server `' @ error/import.c/ImportImageCommand/369.
+import: unable to open X server `' @ error/import.c/ImportImageCommand/369.
+/opt/gridengine/default/spool/compute-0-27/job_scripts/87979: line 5: temperature_array: command not found
+/opt/gridengine/default/spool/compute-0-27/job_scripts/87979: line 11: syntax error near unexpected token `Main_Core.Control_main'
+/opt/gridengine/default/spool/compute-0-27/job_scripts/87979: line 11: `    Main_Core.Control_main(i,Method1,Method2)'

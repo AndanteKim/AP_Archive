@@ -1,0 +1,49 @@
+
+   oo      o       o   oooooo
+  o  o     oo     oo   o     o
+ o    o    o o   o o   o     o
+o      o   o  o o  o   o     o
+oooooooo   o   o   o   oooooo
+o      o   o       o   o
+o      o   o       o   o
+o      o   o       o   o
+
+Amp: Atomistic Machine-learning Package
+Developed by Andrew Peterson, Alireza Khorshidi, and others,
+Brown University.
+PI Website: http://brown.edu/go/catalyst
+Official repository: http://bitbucket.org/andrewpeterson/amp
+Official documentation: http://amp.readthedocs.io/
+Citation:
+  Alireza Khorshidi & Andrew A. Peterson,
+  Computer Physics Communications 207: 310-324 (2016).
+  http://doi.org/10.1016/j.cpc.2016.05.010
+======================================================================
+User: akim
+Hostname: fri.ices.utexas.edu
+Date: 2019-10-25T14:18:36 (2019-10-25T19:18:36 UTC)
+Architecture: x86_64
+PID: 24072
+Amp version: 0.7.0-beta
+Amp directory: /home/fri/bin/amp/amp
+ Last commit: unknown hash
+ Last commit date: unknown date
+Python: v3.7.4: /usr/local/bin/python
+ASE v3.18.0: /usr/local/lib/python3.7/site-packages/ase
+NumPy v1.17.2: /usr/local/lib/python3.7/site-packages/numpy
+SciPy v1.3.1: /usr/local/lib/python3.7/site-packages/scipy
+ZMQ/PyZMQ v4.3.2/v18.1.0: /usr/local/lib/python3.7/site-packages/zmq
+pxssh: Not available from pxssh.
+pxssh (via pexpect v4.7.0): /usr/local/lib/python3.7/site-packages/pexpect/pxssh.py
+======================================================================
+No queuing system detected; single machine assumed.
+Parallel configuration determined from environment for <single machine>:
+  localhost: 24
+
+Amp training started. 2019-10-25T14:18:36
+
+Descriptor: Gaussian
+  (<amp.descriptor.gaussian.Gaussian object at 0x7f171d0f7b50>)
+Model: NeuralNetwork
+  (<amp.model.neuralnetwork.NeuralNetwork object at 0x7f16d3108b10>)
+Attempting to read images from file my-images.traj.

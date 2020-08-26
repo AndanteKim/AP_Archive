@@ -1,0 +1,15 @@
+#!/bin/bash
+#
+#$ -cwd
+#$ -j y
+#$ -N Quasi_Newton
+#$ -m es
+#$ -V
+#$ -M ksb0724@utexas.edu
+#$ -o ll_out
+#$ -S /bin/bash
+
+./SDLBFGS.py 
+
+
+
