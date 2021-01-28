@@ -1,0 +1,69 @@
+﻿Assignment 7 Description
+
+
+        In this assignment 7, our group makes a game named Space Invader consisting of multiple classes to run the game. Compared to other assignments, there are more classes to run all shapes such as player(spacecraft), GUI(life and execution), Shield and its secondary class, Bullet class, Enemy and its secondary class. The game uses 3 keyboard inputs to dictate how the spaceship will move across the screen: ‘A’ for left, ‘D’ for right, and spacebar. The spacebar input allows the spaceship to shoot at the aliens. The game has three rules of play:
+1. The user has three lives. 
+2. The aliens move down the screen at a given rate from the top of the screen.
+3. If the player is hit by the alien bullet, the user loses a life.
+
+In reference, there is a movie video as mp4 file to show our game play as extra credit.
+Laura’s part:
+
+
+Status: Laura primarily wrote the Status class and the game logic within the main tab. The Status class contains the GUI elements that the game needs to display score, lives, restart, win, and lose options. Laura also helped with the rest of the classes as needed. The following are the methods in the Status class:
+* restart_display: method displays the restart button
+* restart: restarts the game smoothly and resets variables to initial state
+* restart_pressed: method returns true if button is pressed
+* win: method displays win screen if player wins
+* lose: method displays lose screen if player loses
+
+
+Andrew’s part:
+
+Enemy: Andrew mainly wrote the Enemy class, and the class includes each enemy’s information. Specifically, each object of the enemy has the x and y coordinates, its size, hit whether the enemy object reaches the edge of minimum x coordinates or maximum x coordinates. Besides, for extra credit of images, I loaded the png image from a specific website. The source I referred is described at the bottom of source citation. The following methods are in Enemy class. 
+* Create: method displays each enemy’s image
+* shoot: method shows how each enemy shoots their bullet at random. It sporadically shoots the bullet to the spaceship(player).
+
+
+EnemyField: It shows all enemies information such as moving, removing, initializing and so on. First of all, it makes 50 enemies as 5 rows and 10 columns per row with Enemy class as initialization. Using 2 dimensional ArrayList, the enemies are shown in the canvas screen when we run it. There is numerous information about similar variables with Enemy class as above, and it adds edge, dead, GameOver, win variables to determine the game result. The following methods are in EnemyField class.
+* init : It sets up and aligns all enemies when the game starts. It also includes each enemy’s bullet speed to shoot.
+* Create: It decorates all displaying enemies as the loaded image.
+* Update: It tracks all enemies moving, determines whether the game should be over or not. There are 2 cases to determine game over. First, the surviving enemies reach to the spaceship(player). Second, the surviving enemies move over the maximum y coordinates, minimum x coordinates or maximum x coordinates. The boolean edge variable determines the enemies’ shift from left to right or right to left if the enemies reaches to the minimum or maximum x coordinates. When running for the first time, the enemies move slow. However, if the player kills the enemy, the enemy speed goes faster to control the difficulty.
+* EnemyShoot: It controls the bullet speed when a enemy shoots the bullet to the player.
+* EnemyHit: It shows how the enemies get killed. When the player’s bullet hits the enemy, the enemy is dead immediately and the bullet also gets removed. Besides, if an enemy gets killed, other surviving enemies move fast with little bit of acceleration.
+* reset: It initialized all enemies information when the game restarts.
+
+
+Bullet class: It shows the bullet information such as moving the x,y coordinates and checks who shoots the bullet. The following methods are in Bullet class.
+* Create: It shows the shape of a bullet like a rectangle.
+* update:  If the player shoots the bullet, then it moves to the -y coordinates. On the contrary, if an enemy shoots the bullet, then it moves to y coordinates with somewhat slow speed.
+* Despawn: It returns true or false how the bullet works. For example, When the bullet hits an object such as shield, player, an enemy, it disappears with damage as returning true. If the bullet moves over the y coordinate in the canvas screen, it also disappears as returning true. Otherwise, it returns false that the bullet is still moving on the canvas screen.
+
+
+Jaeho’s part: 
+
+
+Player: The Player class contains the user spaceship and the functionality to move left/right and shoot bullets. The following methods are in Player class:
+* create: method that creates/displays the user spaceship 
+* update: method that updates user status
+* move: method that moves the user spaceship 
+* hit: method that recognizes the user getting hit by enemy bullet
+* reset: method that resets the user status when the game restarts
+
+
+Shield class contains the functionality for blocks that can take bullets for the player. The following methods are in the Shield class:
+* render: method that creates/displays the shields that are segmented
+* update: method that updates the shield status when it is hit by a bullet
+* reset: resets the shield status when the game restarts
+
+
+Shield Segment class contains functionality for the shield blocks to be segmented in a constant distance. The following methods are in the Shield Segment class:
+* render: creates the individual shields
+* checkHit: checks if the shields are hit by bullets and returns a new count if the shield is hit
+
+The references that we used for the code are the following:
+* saveFrame(): https://processing.org/reference/saveFrame_.html
+* Enemy images:
+   * https://news.konsolenkost.de/wp-content/uploads/2016/07/Space-medium-invader.sh-600x600.png
+* for the hearts in the lives display:
+* https://github.com/CodingTrain/website/blob/main/CodingChallenges/CC_134_Heart_Curve_1/Processing/CC_134_Heart_Curve_1/CC_134_Heart_Curve_1.pde
